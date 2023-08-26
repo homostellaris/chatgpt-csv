@@ -1,0 +1,18 @@
+{
+  "name": "chatgpt-csv",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dotenv index.js",
+  "scripts": {
+    "start": "dotenv node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "csv": "^6.3.3",
+    "dotenv-cli": "^7.3.0",
+    "openai": "^4.2.0"
+  },
+  "type": "module"
+}
