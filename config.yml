@@ -1,0 +1,7 @@
+input:
+  folder: ./test/input-csvs/
+prompt: Summarise the following reviews.
+output:
+  file: ./test/output.csv
+  headers: Business Name,Review
+  column: AF

@@ -1,56 +1,44 @@
-import * as csv from "csv";
+import { parse } from "csv-parse/sync";
 import * as fs from "node:fs";
-import OpenAI from "openai";
 import os from "os";
+import yaml from "yaml";
+import chat from "./chat.js";
 
-const headers = "Business Name,Review" + os.EOL;
+const { input, output, prompt } = getConfig();
 
-const openai = new OpenAI({
-  apiKey: process.env.API_KEY,
-});
+const writeStream = fs.createWriteStream(output.file);
+writeStream.write(output.headers + os.EOL);
 
-const parser = csv.parse({
-  delimiter: ",",
-});
+const inputFiles = fs.readdirSync(input.folder);
+const inputCsvFiles = inputFiles.filter((file) => file.includes("csv"));
+console.info(
+  `🔍 Found ${inputFiles.length} files in input folder ${input.folder}; ${inputCsvFiles.length} are CSV files`
+);
 
-parser.on("readable", async function () {
-  let record;
-  while ((record = parser.read()) !== null) {
-    const review = await generateReview(record);
-    console.log(review);
-    writeStream.write(review + os.EOL);
-  }
-});
-
-parser.on("error", function (err) {
-  console.error(err.message);
-});
-
-parser.on("end", function () {
-  console.log("Stream ended");
-  writeStream.end();
-});
-
-const writeStream = fs.createWriteStream("./test/output.csv");
-writeStream.write(headers);
-
-const files = fs.readdirSync("./test/input-csvs/");
-for (let file of files) {
-  if (file.includes(".csv")) {
-    // Write data to the stream
-    parser.write(fs.readFileSync("./test/input-csvs/" + file));
-  }
+for (let file of inputCsvFiles) {
+  console.info(`\n⏳ Processing input file ${file}`);
+  await process(file);
 }
 
-parser.end();
+writeStream.end();
 
-async function generateReview(record) {
-  const review = "fake review";
+function getConfig() {
+  const configFile = fs.readFileSync("./config.yml", "utf-8");
+  return yaml.parse(configFile);
+}
 
-  // const completion = await openai.chat.completions.create({
-  //   messages: [{ role: "user", content: "Say this is a test" }],
-  //   model: "gpt-3.5-turbo",
-  // });
+async function process(file) {
+  const records = parse(fs.readFileSync(input.folder + file), {
+    delimiter: ",",
+    columns: true,
+  });
+  console.info(`🗂️ Found ${records.length} records`);
 
-  return `Foo,${review}`;
+  const reference = records.map((record) => "- " + record.Qualities).join("\n");
+
+  console.info(`📞 Calling Chat-GPT`);
+  const response = await chat(prompt, reference);
+
+  console.info("📂 Writing result to output file");
+  writeStream.write(`${file},"${response}"${os.EOL}`);
 }
