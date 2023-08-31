@@ -16,7 +16,8 @@ export default async function chat(prompt, context) {
     model: "gpt-3.5-turbo",
   });
 
-  console.info(`🤖 Chat-GPT responded: ${JSON.stringify(completion, null, 2)}`);
+  console.info(`🤖 Chat-GPT responded`);
+  console.debug(`${JSON.stringify(completion, null, 2)}`);
 
   const response = completion.choices[0].message.content;
   return response;

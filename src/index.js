@@ -1,44 +1,67 @@
-import { parse } from "csv-parse/sync";
+import { parse } from "csv";
+import { stringify } from "csv-stringify/sync";
 import * as fs from "node:fs";
-import os from "os";
-import yaml from "yaml";
-import chat from "./chat.js";
 
-const { input, output, prompt } = getConfig();
+import config from "./config.js";
+import summarise from "./summarise.js";
 
-const writeStream = fs.createWriteStream(output.file);
-writeStream.write(output.headers + os.EOL);
+const { input, output } = config();
 
-const inputFiles = fs.readdirSync(input.folder);
+const inputFiles = fs.readdirSync(input.summaryData.folder);
 const inputCsvFiles = inputFiles.filter((file) => file.includes("csv"));
 console.info(
-  `🔍 Found ${inputFiles.length} files in input folder ${input.folder}; ${inputCsvFiles.length} are CSV files`
+  `🔍 Found ${inputFiles.length} files in input folder ${input.summaryData.folder}; ${inputCsvFiles.length} are CSV files`
 );
 
-for (let file of inputCsvFiles) {
-  console.info(`\n⏳ Processing input file ${file}`);
-  await process(file);
-}
+const parser = parse({
+  delimiter: ",",
+  columns: true,
+});
 
-writeStream.end();
+parser.on("readable", async function () {
+  let record;
+  while ((record = parser.read()) !== null) {
+    console.info(`\n⏳ Processing record from input file`);
+    if (record[output.column]) {
+      console.info("⏩ Column already populated for record; skipping.");
+      continue;
+    }
 
-function getConfig() {
-  const configFile = fs.readFileSync("./config.yml", "utf-8");
-  return yaml.parse(configFile);
-}
+    const pattern = input.master.summaryMatchColumns
+      .map((summaryMatchColumn) => record[summaryMatchColumn])
+      .join(".*");
+    const summaryDataFile = inputCsvFiles.find((file) =>
+      file.match(new RegExp(pattern))
+    );
+    if (!summaryDataFile) {
+      console.warn(
+        `⏩ No summary data file found for pattern ${pattern}; skipping.`
+      );
+      continue;
+    } else {
+      console.info(
+        `🔍 Summary data file ${summaryDataFile} found for pattern ${pattern}`
+      );
+    }
 
-async function process(file) {
-  const records = parse(fs.readFileSync(input.folder + file), {
-    delimiter: ",",
-    columns: true,
-  });
-  console.info(`🗂️ Found ${records.length} records`);
+    const summary = await summarise(summaryDataFile);
+    const populatedRecord = { ...record, [output.column]: summary };
 
-  const reference = records.map((record) => "- " + record.Qualities).join("\n");
+    console.info("📂 Writing populated record to output file");
+    writeStream.write(stringify([populatedRecord]));
+  }
+});
 
-  console.info(`📞 Calling Chat-GPT`);
-  const response = await chat(prompt, reference);
+parser.on("error", function (err) {
+  console.error(err.message);
+});
 
-  console.info("📂 Writing result to output file");
-  writeStream.write(`${file},"${response}"${os.EOL}`);
-}
+parser.on("end", function () {
+  console.log("Stream ended");
+  writeStream.end();
+});
+
+const writeStream = fs.createWriteStream(output.file);
+
+parser.write(fs.readFileSync(input.master.file)); // Make this a stream
+parser.end();

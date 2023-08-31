@@ -1,7 +1,13 @@
 input:
-  folder: ./test/input-csvs/
+  master:
+    file: ./test/input.csv
+    summaryMatchColumns:
+      - Business Name
+  summaryData:
+    folder: ./test/input-csvs/
+    column: Review Text
 prompt: Summarise the following reviews.
 output:
   file: ./test/output.csv
   headers: Business Name,Review
-  column: AF
+  column: Review Summary
