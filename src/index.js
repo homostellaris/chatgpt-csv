@@ -14,8 +14,11 @@ console.info(
 );
 
 const parser = parse({
-  delimiter: ",",
+  bom: true,
   columns: true,
+  encoding: "utf8",
+  delimiter: ",",
+  relaxQuotes: true,
 });
 
 parser.on("readable", async function () {
@@ -40,7 +43,7 @@ parser.on("readable", async function () {
       continue;
     } else {
       console.info(
-        `🔍 Summary data file ${summaryDataFile} found for pattern ${pattern}`
+        `🔍 Summary data file '${summaryDataFile}' found for pattern '${pattern}'`
       );
     }
 
@@ -62,6 +65,5 @@ parser.on("end", function () {
 });
 
 const writeStream = fs.createWriteStream(output.file);
-
-parser.write(fs.readFileSync(input.master.file)); // Make this a stream
-parser.end();
+const readStream = fs.createReadStream(input.master.file);
+readStream.pipe(parser);

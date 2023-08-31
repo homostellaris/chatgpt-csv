@@ -1,13 +1,14 @@
 input:
   master:
-    file: ./test/input.csv
+    file: ./input/Soft Plays v2.0 Example.csv
     summaryMatchColumns:
-      - Business Name
+      - Name
+      - Fulladdress
   summaryData:
-    folder: ./test/input-csvs/
+    folder: ./input/Business Reviews/
     column: Review Text
 prompt: Summarise the following reviews.
 output:
-  file: ./test/output.csv
+  file: ./output/Master with Review Summaries.csv
   headers: Business Name,Review
   column: Review Summary

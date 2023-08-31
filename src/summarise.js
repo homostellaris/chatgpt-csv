@@ -8,8 +8,10 @@ const { input, prompt } = config();
 
 export default async function summarise(file) {
   const records = parse(fs.readFileSync(input.summaryData.folder + file), {
-    delimiter: ",",
+    bom: true,
     columns: true,
+    delimiter: ",",
+    relaxQuotes: true,
   });
   console.info(`🗂️ Found ${records.length} records`);
 
