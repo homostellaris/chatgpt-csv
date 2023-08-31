@@ -15,7 +15,10 @@ export default async function summarise(file) {
   });
   console.info(`🗂️ Found ${records.length} records`);
 
-  const reference = records.map((record) => "- " + record.Qualities).join("\n");
+  const reference = records
+    .filter((record) => !record)
+    .map((record) => "- " + record[input.summaryData.column])
+    .join("\n");
 
   console.info(`🤖 Asking Chat-GPT to summarise`);
   const response = await chat(prompt, reference);

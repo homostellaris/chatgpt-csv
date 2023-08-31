@@ -1,5 +1,4 @@
-import { parse } from "csv";
-import { stringify } from "csv-stringify/sync";
+import { parse, stringify, transform } from "csv";
 import * as fs from "node:fs";
 
 import config from "./config.js";
@@ -21,49 +20,44 @@ const parser = parse({
   relaxQuotes: true,
 });
 
-parser.on("readable", async function () {
-  let record;
-  while ((record = parser.read()) !== null) {
-    console.info(`\n⏳ Processing record from input file`);
-    if (record[output.column]) {
-      console.info("⏩ Column already populated for record; skipping.");
-      continue;
-    }
-
-    const pattern = input.master.summaryMatchColumns
-      .map((summaryMatchColumn) => record[summaryMatchColumn])
-      .join(".*");
-    const summaryDataFile = inputCsvFiles.find((file) =>
-      file.match(new RegExp(pattern))
-    );
-    if (!summaryDataFile) {
-      console.warn(
-        `⏩ No summary data file found for pattern ${pattern}; skipping.`
-      );
-      continue;
-    } else {
-      console.info(
-        `🔍 Summary data file '${summaryDataFile}' found for pattern '${pattern}'`
-      );
-    }
-
-    const summary = await summarise(summaryDataFile);
-    const populatedRecord = { ...record, [output.column]: summary };
-
-    console.info("📂 Writing populated record to output file");
-    writeStream.write(stringify([populatedRecord]));
-  }
-});
-
-parser.on("error", function (err) {
-  console.error(err.message);
-});
-
-parser.on("end", function () {
-  console.log("Stream ended");
-  writeStream.end();
-});
-
 const writeStream = fs.createWriteStream(output.file);
 const readStream = fs.createReadStream(input.master.file);
-readStream.pipe(parser);
+const transformer = transform({ parallel: 1 }, (record, callback) => {
+  console.info(`\n⏳ Processing record from input file`);
+  if (record[output.column]) {
+    console.info("⏩ Column already populated for record; skipping.");
+    return callback(null, record);
+  }
+
+  const pattern = input.master.summaryMatchColumns
+    .map((summaryMatchColumn) => record[summaryMatchColumn])
+    .join(".*");
+  const summaryDataFile = inputCsvFiles.find((file) =>
+    file.match(new RegExp(pattern))
+  );
+  if (!summaryDataFile) {
+    console.warn(
+      `⏩ No summary data file found for pattern ${pattern}; skipping.`
+    );
+    return callback(null, record);
+  }
+  console.info(
+    `🔍 Summary data file '${summaryDataFile}' found for pattern '${pattern}'`
+  );
+
+  summarise(summaryDataFile).then((summary) => {
+    console.info("📂 Summary ready, writing populated record to output file");
+    const populatedRecord = { ...record, [output.column]: summary };
+    callback(null, populatedRecord);
+  });
+});
+
+readStream
+  .pipe(parser)
+  .pipe(transformer)
+  .pipe(
+    stringify({
+      header: true,
+    })
+  )
+  .pipe(writeStream);
