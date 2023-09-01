@@ -15,13 +15,30 @@ export default async function summarise(file) {
   });
   console.info(`🗂️ Found ${records.length} records`);
 
-  const reference = records
-    .filter((record) => !record)
-    .map((record) => "- " + record[input.summaryData.column])
-    .join("\n");
+  const contextRecords = records
+    .filter((record) => record[input.summaryData.column])
+    .map((record) => "- " + record[input.summaryData.column]);
+  console.info(
+    `✂︎ Filtered reviews with no text, keeping ${contextRecords.length}/${records.length}`
+  );
+  let context = "";
+
+  let i = 0;
+  while (i < contextRecords.length) {
+    const nextContextRecord = contextRecords[++i] + "\n";
+    if ((context.length + nextContextRecord.length) / 4 >= requestTokenLimit) {
+      console.info(
+        `✂︎ Too many reviews to summarise in one request, using ${i}/${contextRecords.length} reviews for summary.`
+      );
+      break;
+    }
+    context += nextContextRecord;
+  }
 
   console.info(`🤖 Asking Chat-GPT to summarise`);
-  const response = await chat(prompt, reference);
+  const response = await chat(prompt, context);
 
   return response;
 }
+
+const requestTokenLimit = 4097;
