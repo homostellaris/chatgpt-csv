@@ -7,8 +7,8 @@ input:
   summaryData:
     folder: ./input/Business Reviews/
     column: Review Text
-prompt: Summarise the following reviews.
+prompt: Combine and summarise all of the below reviews roughly 10 lines long with british spellings. Be overall positive in tone and an emphasis on specific play apparatus. Do not mention names in the response.
 output:
   file: ./output/Master with Review Summaries.csv
   headers: Business Name,Review
-  column: Review Summary
+  column: Review summary

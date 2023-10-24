@@ -20,8 +20,8 @@ const parser = parse({
   relaxQuotes: true,
 });
 
-const writeStream = fs.createWriteStream(output.file);
 const readStream = fs.createReadStream(input.master.file);
+const writeStream = fs.createWriteStream(output.file);
 const transformer = transform({ parallel: 1 }, (record, callback) => {
   console.info(`\n⏳ Processing record from input file`);
   if (record[output.column]) {
